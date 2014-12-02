@@ -1,7 +1,9 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP, BangPatterns, FlexibleContexts, ScopedTypeVariables #-}
 module Main where
 
-import Data.Array.Accelerate
+import System.Environment
+
+import Data.Array.Accelerate as A
 import Data.Array.Accelerate.Interpreter as I
 
 type Weight = Int32
@@ -44,4 +46,14 @@ testGraph = toAdjMatrix $
    [  11, 999, 999,  14, 999,   0]]
 
 main :: IO ()
-main = print $ shortestPaths testGraph 
+main = do
+  (n:_) <- fmap (fmap read) getArgs
+  print (run (let g :: Acc Graph
+	          g = generate (constant (Z:.n:.n) :: Exp DIM2) f
+
+                  f :: Exp DIM2 -> Exp Weight
+		  f ix = let i,j :: Exp Int
+	                     Z:.i:.j = unlift ix
+			 in
+			   A.fromIntegral j + (A.fromIntegral i) * constant (Prelude.fromIntegral n)
+	      in (shortestPathsAcc n g)))
